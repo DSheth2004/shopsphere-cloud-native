@@ -1,1 +1,28 @@
-resources: [../../base]
+# Single-node k3s on EC2: images come from GHCR (pushed by the CD workflow) and Traefik serves the public link.
+# secrets.env is generated on the server by infra/terraform/user-data.sh and is never committed.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - ingress.yaml
+secretGenerator:
+  - name: shopsphere-secrets
+    namespace: shopsphere
+    envs: [secrets.env]
+images:
+  - { name: shopsphere/frontend, newName: ghcr.io/dsheth2004/shopsphere-frontend, newTag: latest }
+  - { name: shopsphere/api-gateway, newName: ghcr.io/dsheth2004/shopsphere-api-gateway, newTag: latest }
+  - { name: shopsphere/auth-service, newName: ghcr.io/dsheth2004/shopsphere-auth-service, newTag: latest }
+  - { name: shopsphere/product-service, newName: ghcr.io/dsheth2004/shopsphere-product-service, newTag: latest }
+  - { name: shopsphere/inventory-service, newName: ghcr.io/dsheth2004/shopsphere-inventory-service, newTag: latest }
+  - { name: shopsphere/cart-service, newName: ghcr.io/dsheth2004/shopsphere-cart-service, newTag: latest }
+  - { name: shopsphere/order-service, newName: ghcr.io/dsheth2004/shopsphere-order-service, newTag: latest }
+  - { name: shopsphere/payment-service, newName: ghcr.io/dsheth2004/shopsphere-payment-service, newTag: latest }
+  - { name: shopsphere/notification-service, newName: ghcr.io/dsheth2004/shopsphere-notification-service, newTag: latest }
+  - { name: shopsphere/report-job, newName: ghcr.io/dsheth2004/shopsphere-report-job, newTag: latest }
+patches:
+  - target: { kind: Deployment, labelSelector: "tier in (backend,web)" }
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Always

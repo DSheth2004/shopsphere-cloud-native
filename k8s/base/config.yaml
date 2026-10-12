@@ -1,10 +1,17 @@
 apiVersion: v1
 kind: ConfigMap
-metadata: { name: shopsphere-config, namespace: shopsphere }
-data: { SPRING_PROFILES_ACTIVE: k8s }
----
-apiVersion: v1
-kind: Secret
-metadata: { name: shopsphere-secrets, namespace: shopsphere }
-type: Opaque
-stringData: { JWT_SECRET: replace-me-before-deploying, POSTGRES_PASSWORD: replace-me-before-deploying }
+metadata: { name: shopsphere-config }
+data:
+  AUTH_SERVICE_URL: http://auth-service:8080
+  PRODUCT_SERVICE_URL: http://product-service:8080
+  INVENTORY_SERVICE_URL: http://inventory-service:8080
+  CART_SERVICE_URL: http://cart-service:8080
+  ORDER_SERVICE_URL: http://order-service:8080
+  PAYMENT_SERVICE_URL: http://payment-service:8080
+  NOTIFICATION_SERVICE_URL: http://notification-service:8080
+  API_GATEWAY_URL: http://api-gateway:8080
+  DB_URL: jdbc:postgresql://postgres:5432/shopsphere
+  MONGODB_URI: mongodb://mongodb:27017/product_db
+  REDIS_HOST: redis
+  RABBITMQ_HOST: rabbitmq
+  PAYMENT_FAILURE_RATE: "0"

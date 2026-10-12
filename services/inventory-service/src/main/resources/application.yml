@@ -1,8 +1,10 @@
 spring:
   application: { name: inventory-service }
-  rabbitmq.host: ${RABBITMQ_HOST:localhost}
-  rabbitmq.username: ${RABBITMQ_USERNAME:shopsphere}
-  rabbitmq.password: ${RABBITMQ_PASSWORD:shopsphere_local_password}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    username: ${RABBITMQ_USERNAME:shopsphere}
+    password: ${RABBITMQ_PASSWORD:shopsphere_local_password}
+    listener.simple.retry: { enabled: true, max-attempts: 3 }
 server:
   port: ${SERVER_PORT:8083}
   shutdown: graceful

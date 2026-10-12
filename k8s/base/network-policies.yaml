@@ -1,0 +1,80 @@
+# Zero-trust networking inside the namespace: deny all ingress, then allow only the call graph we designed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: frontend-from-anywhere }
+spec:
+  podSelector: { matchLabels: { app: frontend } }
+  ingress: [{ ports: [{ port: 8080 }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: gateway-from-frontend-and-ingress }
+spec:
+  podSelector: { matchLabels: { app: api-gateway } }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: frontend } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+      ports: [{ port: 8080 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: services-from-gateway }
+spec:
+  podSelector: { matchLabels: { tier: backend } }
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: api-gateway } } }]
+      ports: [{ port: 8080 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: product-from-order }
+spec:
+  podSelector: { matchLabels: { app: product-service } }
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: order-service } } }]
+      ports: [{ port: 8080 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: postgres-from-auth }
+spec:
+  podSelector: { matchLabels: { app: postgres } }
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: auth-service } } }]
+      ports: [{ port: 5432 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: mongodb-from-product }
+spec:
+  podSelector: { matchLabels: { app: mongodb } }
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: product-service } } }]
+      ports: [{ port: 27017 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: redis-from-cart-and-gateway }
+spec:
+  podSelector: { matchLabels: { app: redis } }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: cart-service } }
+        - podSelector: { matchLabels: { app: api-gateway } }
+      ports: [{ port: 6379 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: rabbitmq-from-saga-services }
+spec:
+  podSelector: { matchLabels: { app: rabbitmq } }
+  ingress:
+    - from:
+        - podSelector: { matchExpressions: [{ key: app, operator: In, values: [order-service, inventory-service, payment-service, notification-service] }] }
+      ports: [{ port: 5672 }]

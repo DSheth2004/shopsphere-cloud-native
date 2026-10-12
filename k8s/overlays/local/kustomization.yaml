@@ -1,1 +1,23 @@
+# kind / Docker Desktop: images are built locally and loaded into the cluster (scripts/kind-up.*).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 resources: [../../base]
+secretGenerator:
+  - name: shopsphere-secrets
+    namespace: shopsphere
+    literals:
+      - JWT_SECRET=local-dev-jwt-secret-change-me-0123456789
+      - ADMIN_PASSWORD=Admin@12345
+      - POSTGRES_PASSWORD=shopsphere_local_password
+      - RABBITMQ_USERNAME=shopsphere
+      - RABBITMQ_PASSWORD=shopsphere_local_password
+patches:
+  # Expose the storefront on the kind node (mapped to http://localhost:30080 by scripts/kind-config.yaml).
+  - target: { kind: Service, name: frontend }
+    patch: |-
+      - op: add
+        path: /spec/type
+        value: NodePort
+      - op: add
+        path: /spec/ports/0/nodePort
+        value: 30080

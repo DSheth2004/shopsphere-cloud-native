@@ -4,4 +4,5 @@ scrape_configs:
   - job_name: shopsphere
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ["api-gateway:8080", "auth-service:8081", "product-service:8082", "inventory-service:8083", "cart-service:8084", "order-service:8085", "payment-service:8086", "notification-service:8087"]
+      # Every service listens on 8080 inside the Compose network.
+      - targets: ["api-gateway:8080", "auth-service:8080", "product-service:8080", "inventory-service:8080", "cart-service:8080", "order-service:8080", "payment-service:8080", "notification-service:8080"]

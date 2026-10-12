@@ -1,6 +1,8 @@
 spring:
   application: { name: cart-service }
-  data.redis.host: ${REDIS_HOST:localhost}
+  data.redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
 server:
   port: ${SERVER_PORT:8084}
   shutdown: graceful

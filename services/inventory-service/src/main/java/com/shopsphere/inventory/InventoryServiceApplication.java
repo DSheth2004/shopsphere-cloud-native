@@ -1,4 +1,24 @@
 package com.shopsphere.inventory;
-import com.shopsphere.common.web.CorrelationIdFilter;
-import org.springframework.amqp.core.*; import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter; import org.springframework.boot.SpringApplication; import org.springframework.boot.autoconfigure.SpringBootApplication; import org.springframework.context.annotation.Bean;
-@SpringBootApplication public class InventoryServiceApplication { public static void main(String[] args){SpringApplication.run(InventoryServiceApplication.class,args);} @Bean CorrelationIdFilter correlationIdFilter(){return new CorrelationIdFilter();} @Bean TopicExchange shopsphereEvents(){return new TopicExchange("shopsphere.events",true,false);}@Bean Queue inventoryEvents(){return new Queue("inventory.events",true);}@Bean Binding inventoryBinding(Queue inventoryEvents,TopicExchange shopsphereEvents){return BindingBuilder.bind(inventoryEvents).to(shopsphereEvents).with("order.created");}@Bean Jackson2JsonMessageConverter messageConverter(){return new Jackson2JsonMessageConverter();} }
+
+import com.shopsphere.common.events.OrderEvents;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.TopicExchange;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+
+@SpringBootApplication
+public class InventoryServiceApplication {
+    public static void main(String[] args) { SpringApplication.run(InventoryServiceApplication.class, args); }
+
+    @Bean Queue inventoryOrders() { return new Queue("inventory.order-created", true); }
+    @Bean Queue inventoryCompensations() { return new Queue("inventory.order-cancelled", true); }
+    @Bean Binding inventoryOrdersBinding(Queue inventoryOrders, TopicExchange shopsphereEvents) {
+        return BindingBuilder.bind(inventoryOrders).to(shopsphereEvents).with(OrderEvents.ORDER_CREATED);
+    }
+    @Bean Binding inventoryCompensationsBinding(Queue inventoryCompensations, TopicExchange shopsphereEvents) {
+        return BindingBuilder.bind(inventoryCompensations).to(shopsphereEvents).with(OrderEvents.ORDER_CANCELLED);
+    }
+}

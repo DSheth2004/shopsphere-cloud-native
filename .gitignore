@@ -22,3 +22,14 @@ target/
 Thumbs.db
 *.log
 coverage/
+
+# Kubernetes secrets generated on the server
+k8s/overlays/aws/secrets.env
+
+# Terraform state and local variables
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl.bak

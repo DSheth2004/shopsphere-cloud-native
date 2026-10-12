@@ -1,5 +1,16 @@
 spring:
   application: { name: auth-service }
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/shopsphere}
+    username: ${DB_USERNAME:postgres}
+    password: ${POSTGRES_PASSWORD:shopsphere_local_password}
+    hikari: { maximum-pool-size: 5 }
+  jpa:
+    hibernate.ddl-auto: update
+    open-in-view: false
+shopsphere:
+  jwt: { secret: "${JWT_SECRET}", ttl: PT8H }
+  admin: { email: "${ADMIN_EMAIL:admin@shopsphere.local}", password: "${ADMIN_PASSWORD:}" }
 server:
   port: ${SERVER_PORT:8081}
   shutdown: graceful

@@ -1,8 +1,9 @@
 spring:
   application: { name: notification-service }
-  rabbitmq.host: ${RABBITMQ_HOST:localhost}
-  rabbitmq.username: ${RABBITMQ_USERNAME:shopsphere}
-  rabbitmq.password: ${RABBITMQ_PASSWORD:shopsphere_local_password}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    username: ${RABBITMQ_USERNAME:shopsphere}
+    password: ${RABBITMQ_PASSWORD:shopsphere_local_password}
 server:
   port: ${SERVER_PORT:8087}
   shutdown: graceful
