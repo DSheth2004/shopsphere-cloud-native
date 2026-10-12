@@ -2,6 +2,8 @@
 # secrets.env is generated on the server by infra/terraform/user-data.sh and is never committed.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# The base sets its own namespace, but resources added here (the Ingress) need it too.
+namespace: shopsphere
 resources:
   - ../../base
   - ingress.yaml
