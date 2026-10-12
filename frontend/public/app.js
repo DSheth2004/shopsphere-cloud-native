@@ -179,7 +179,7 @@
     if (available === undefined) return el('span', { class: 'pill info', text: 'Stock unknown' });
     if (available <= 0) return el('span', { class: 'pill bad', text: 'Out of stock' });
     if (available <= 5) return el('span', { class: 'pill warn', text: `Only ${available} left` });
-    return el('span', { class: 'pill ok', text: 'In stock' });
+    return el('span', { class: 'pill ok', text: `${available} in stock` });
   }
 
   function renderProducts() {
@@ -283,7 +283,8 @@
       renderOrders();
       const running = state.orders.some((o) => o.status !== 'CONFIRMED' && o.status !== 'CANCELLED');
       clearTimeout(pollTimer);
-      if (running && currentRoute() === 'orders') pollTimer = setTimeout(() => { loadOrders(); refreshNotifications(); loadStock(); }, 1000);
+      loadStock();
+      if (running && currentRoute() === 'orders') pollTimer = setTimeout(() => { loadOrders(); refreshNotifications(); }, 1000);
     } catch (error) { toast(error.message, true); }
   }
 
@@ -325,8 +326,14 @@
     }));
   }
 
+  // Stock is shared by every shopper, so it is re-read after each order and polled while the page is visible.
   async function loadStock() {
-    try { state.stock = await api('/api/inventory'); renderProducts(); } catch { /* keep last known stock */ }
+    try {
+      const stock = await api('/api/inventory') || {};
+      if (JSON.stringify(stock) === JSON.stringify(state.stock)) return;
+      state.stock = stock;
+      renderProducts();
+    } catch { /* keep last known stock */ }
   }
 
   // ---------- notifications ----------
@@ -416,6 +423,7 @@
     document.querySelectorAll('.view').forEach((view) => { view.hidden = view.id !== `view-${name}`; });
     document.querySelectorAll('.nav a').forEach((link) => link.classList.toggle('active', link.dataset.route === name));
     clearTimeout(pollTimer);
+    if (name === 'shop') loadStock();
     if (name === 'orders') loadOrders();
     if (name === 'platform') loadHealth();
     if (name === 'admin') renderAdmin();
@@ -444,4 +452,6 @@
   loadCatalogue();
   if (state.session) { refreshCart(); refreshNotifications(); }
   setInterval(refreshNotifications, 15000);
+  setInterval(() => { if (document.visibilityState === 'visible') loadStock(); }, 5000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadStock(); });
 })();
