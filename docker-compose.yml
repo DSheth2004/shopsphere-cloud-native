@@ -1,0 +1,53 @@
+name: shopsphere
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-shopsphere_local_password}" }
+    ports: ["5432:5432"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres"], interval: 10s, timeout: 5s, retries: 10 }
+  mongodb:
+    image: mongo:7
+    ports: ["27017:27017"]
+    healthcheck: { test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"], interval: 10s, timeout: 5s, retries: 10 }
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 5s, retries: 10 }
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment: { RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-shopsphere}", RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-shopsphere_local_password}" }
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"], interval: 10s, timeout: 5s, retries: 10 }
+  api-gateway:
+    build: { context: ., args: { MODULE: services/api-gateway } }
+    ports: ["8080:8080"]
+    environment: { AUTH_SERVICE_URL: "http://auth-service:8081", PRODUCT_SERVICE_URL: "http://product-service:8082", CART_SERVICE_URL: "http://cart-service:8084", ORDER_SERVICE_URL: "http://order-service:8085" }
+    depends_on: { rabbitmq: { condition: service_healthy } }
+  auth-service:
+    build: { context: ., args: { MODULE: services/auth-service } }
+    environment: { SERVER_PORT: 8081 }
+    depends_on: { postgres: { condition: service_healthy } }
+  product-service:
+    build: { context: ., args: { MODULE: services/product-service } }
+    environment: { SERVER_PORT: 8082, MONGODB_URI: "mongodb://mongodb:27017/product_db" }
+    depends_on: { mongodb: { condition: service_healthy }, redis: { condition: service_healthy } }
+  inventory-service:
+    build: { context: ., args: { MODULE: services/inventory-service } }
+    environment: { SERVER_PORT: 8083, RABBITMQ_HOST: rabbitmq }
+    depends_on: { rabbitmq: { condition: service_healthy } }
+  cart-service:
+    build: { context: ., args: { MODULE: services/cart-service } }
+    environment: { SERVER_PORT: 8084, REDIS_HOST: redis }
+    depends_on: { redis: { condition: service_healthy } }
+  order-service:
+    build: { context: ., args: { MODULE: services/order-service } }
+    environment: { SERVER_PORT: 8085, RABBITMQ_HOST: rabbitmq }
+    depends_on: { rabbitmq: { condition: service_healthy } }
+  payment-service:
+    build: { context: ., args: { MODULE: services/payment-service } }
+    environment: { SERVER_PORT: 8086, RABBITMQ_HOST: rabbitmq }
+    depends_on: { rabbitmq: { condition: service_healthy } }
+  notification-service:
+    build: { context: ., args: { MODULE: services/notification-service } }
+    environment: { SERVER_PORT: 8087, RABBITMQ_HOST: rabbitmq }
+    depends_on: { rabbitmq: { condition: service_healthy } }

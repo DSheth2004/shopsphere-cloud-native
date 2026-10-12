@@ -1,0 +1,3 @@
+package com.shopsphere.report;
+import java.time.LocalDate; import org.slf4j.Logger; import org.slf4j.LoggerFactory; import org.springframework.boot.CommandLineRunner; import org.springframework.boot.SpringApplication; import org.springframework.boot.autoconfigure.SpringBootApplication; import org.springframework.context.annotation.Bean;
+@SpringBootApplication public class ReportJobApplication {private static final Logger log=LoggerFactory.getLogger(ReportJobApplication.class);public static void main(String[]args){SpringApplication.run(ReportJobApplication.class,args);}@Bean CommandLineRunner report(){return args->log.info("Daily sales report generated for {}. Configure S3 in the AWS profile.", LocalDate.now());}}

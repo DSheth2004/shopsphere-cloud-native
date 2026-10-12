@@ -1,0 +1,24 @@
+# Build output and IDE files
+target/
+**/target/
+.m2/
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# OS and test output
+.DS_Store
+Thumbs.db
+*.log
+coverage/

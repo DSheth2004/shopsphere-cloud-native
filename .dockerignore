@@ -1,0 +1,9 @@
+.git
+.m2
+**/target
+.env
+docs
+infra
+k8s
+observability
+load-tests
