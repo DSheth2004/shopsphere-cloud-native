@@ -27,15 +27,17 @@ spec:
             - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
             - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: shopsphere-secrets, key: POSTGRES_PASSWORD } } }
           resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 500m, memory: 256Mi } }
-          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
           readinessProbe: { exec: { command: [pg_isready, -U, postgres] }, periodSeconds: 10 }
           livenessProbe: { exec: { command: [pg_isready, -U, postgres] }, periodSeconds: 20, initialDelaySeconds: 20 }
           volumeMounts:
             - { name: data, mountPath: /var/lib/postgresql/data }
             - { name: run, mountPath: /var/run/postgresql }
+            - { name: tmp, mountPath: /tmp }
       volumes:
         - { name: data, persistentVolumeClaim: { claimName: postgres-data } }
         - { name: run, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
 ---
 apiVersion: v1
 kind: Service
@@ -66,12 +68,13 @@ spec:
           args: ["--wiredTigerCacheSizeGB", "0.25"]
           ports: [{ name: mongo, containerPort: 27017 }]
           resources: { requests: { cpu: 50m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
-          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
           readinessProbe: { exec: { command: [mongosh, --quiet, --eval, "db.adminCommand('ping')"] }, periodSeconds: 10, timeoutSeconds: 5 }
           livenessProbe: { tcpSocket: { port: mongo }, periodSeconds: 20, initialDelaySeconds: 20 }
-          volumeMounts: [{ name: data, mountPath: /data/db }, { name: tmp, mountPath: /tmp }]
+          volumeMounts: [{ name: data, mountPath: /data/db }, { name: configdb, mountPath: /data/configdb }, { name: tmp, mountPath: /tmp }]
       volumes:
         - { name: data, persistentVolumeClaim: { claimName: mongo-data } }
+        - { name: configdb, emptyDir: {} }
         - { name: tmp, emptyDir: {} }
 ---
 apiVersion: v1
@@ -131,11 +134,11 @@ spec:
             - { name: RABBITMQ_DEFAULT_PASS, valueFrom: { secretKeyRef: { name: shopsphere-secrets, key: RABBITMQ_PASSWORD } } }
             - { name: RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS, value: "+MBas ageffcbf +MHas ageffcbf +MBlmbcs 512 +MHlmbcs 512 +MMmcs 30" }
           resources: { requests: { cpu: 50m, memory: 160Mi }, limits: { cpu: 500m, memory: 384Mi } }
-          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
           readinessProbe: { exec: { command: [rabbitmq-diagnostics, -q, ping] }, periodSeconds: 15, timeoutSeconds: 10 }
           livenessProbe: { tcpSocket: { port: amqp }, periodSeconds: 30, initialDelaySeconds: 30 }
-          volumeMounts: [{ name: data, mountPath: /var/lib/rabbitmq }]
-      volumes: [{ name: data, emptyDir: {} }]
+          volumeMounts: [{ name: data, mountPath: /var/lib/rabbitmq }, { name: tmp, mountPath: /tmp }]
+      volumes: [{ name: data, emptyDir: {} }, { name: tmp, emptyDir: {} }]
 ---
 apiVersion: v1
 kind: Service

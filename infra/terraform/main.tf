@@ -43,11 +43,23 @@ resource "aws_security_group" "node" {
     }
   }
 
+  # The node must reach GHCR, GitHub, get.k3s.io and the OS package mirrors, whose addresses are not fixed,
+  # so egress is limited by port rather than by destination. AWS DNS, NTP and IMDS are link-local and not filtered.
+  #trivy:ignore:AVD-AWS-0104
   egress {
-    description = "Image pulls from GHCR and package downloads"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "HTTPS for image pulls, GitHub and k3s install"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  #trivy:ignore:AVD-AWS-0104
+  egress {
+    description = "HTTP for OS package mirrors"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
