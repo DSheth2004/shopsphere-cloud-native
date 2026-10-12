@@ -59,11 +59,11 @@ jobs:
     name: Dependency review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    # Needs "Dependency graph" turned on in Settings > Code security; until then the action errors,
-    # so it reports without blocking. Trivy above is the blocking dependency scan.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+      # Needs "Dependency graph" turned on in Settings > Code security; until then the action errors,
+      # so it reports without blocking. Trivy above is the blocking dependency scan.
       - uses: actions/dependency-review-action@v4
+        continue-on-error: true
         with:
           fail-on-severity: high
