@@ -1,0 +1,11 @@
+# Trivy misconfiguration checks that do not apply to this project.
+# Every other finding, at any severity, still reaches GitHub code scanning.
+
+# Images are hosted on GHCR, so the "use only Azure / GCR / ECR registries" checks can never pass.
+AVD-KSV-0032
+AVD-KSV-0033
+AVD-KSV-0035
+# No trusted-registry allowlist policy is configured for the cluster, so this check has nothing to compare against.
+AVD-KSV-0125
+# The base manifests leave out metadata.namespace on purpose; Kustomize sets namespace: shopsphere for every overlay.
+AVD-KSV-0110
