@@ -1,60 +1,124 @@
+# Local platform: docker compose up --build -d   then open http://localhost:3000
 name: shopsphere
+
+x-java-service: &java-service
+  restart: unless-stopped
+  mem_limit: 512m
+  security_opt: [ "no-new-privileges:true" ]
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health/readiness || exit 1"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 60s
+
+x-rabbit-env: &rabbit-env
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_USERNAME: "${RABBITMQ_DEFAULT_USER:-shopsphere}"
+  RABBITMQ_PASSWORD: "${RABBITMQ_DEFAULT_PASS:-shopsphere_local_password}"
+
 services:
   postgres:
     image: postgres:16-alpine
-    environment: { POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-shopsphere_local_password}" }
-    ports: ["5432:5432"]
+    restart: unless-stopped
+    environment: { POSTGRES_DB: shopsphere, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-shopsphere_local_password}" }
+    volumes: [ "postgres-data:/var/lib/postgresql/data" ]
     healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres"], interval: 10s, timeout: 5s, retries: 10 }
   mongodb:
     image: mongo:7
-    ports: ["27017:27017"]
-    healthcheck: { test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"], interval: 10s, timeout: 5s, retries: 10 }
+    restart: unless-stopped
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    volumes: [ "mongo-data:/data/db" ]
+    healthcheck: { test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"], interval: 10s, timeout: 5s, retries: 10 }
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    restart: unless-stopped
     healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 5s, retries: 10 }
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
+    restart: unless-stopped
     environment: { RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-shopsphere}", RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-shopsphere_local_password}" }
-    ports: ["5672:5672", "15672:15672"]
+    ports: ["15672:15672"]
     healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"], interval: 10s, timeout: 5s, retries: 10 }
+
+  frontend:
+    build: { context: ./frontend }
+    image: shopsphere/frontend:latest
+    restart: unless-stopped
+    ports: ["3000:8080"]
+    environment: { API_GATEWAY_URL: "http://api-gateway:8080" }
+    depends_on: { api-gateway: { condition: service_started } }
   api-gateway:
+    <<: *java-service
     build: { context: ., args: { MODULE: services/api-gateway } }
+    image: shopsphere/api-gateway:latest
     ports: ["8080:8080"]
-    environment: { AUTH_SERVICE_URL: "http://auth-service:8081", PRODUCT_SERVICE_URL: "http://product-service:8082", CART_SERVICE_URL: "http://cart-service:8084", ORDER_SERVICE_URL: "http://order-service:8085" }
-    depends_on: { rabbitmq: { condition: service_healthy } }
-  auth-service:
-    build: { context: ., args: { MODULE: services/auth-service } }
-    environment: { SERVER_PORT: 8081 }
-    depends_on: { postgres: { condition: service_healthy } }
-    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"], interval: 15s, timeout: 5s, retries: 5, start_period: 45s }
-  product-service:
-    build: { context: ., args: { MODULE: services/product-service } }
-    environment: { SERVER_PORT: 8082, MONGODB_URI: "mongodb://mongodb:27017/product_db", REDIS_HOST: redis }
-    depends_on: { mongodb: { condition: service_healthy }, redis: { condition: service_healthy } }
-    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"], interval: 15s, timeout: 5s, retries: 5, start_period: 45s }
-  inventory-service:
-    build: { context: ., args: { MODULE: services/inventory-service } }
-    environment: { SERVER_PORT: 8083, RABBITMQ_HOST: rabbitmq, RABBITMQ_USERNAME: "${RABBITMQ_DEFAULT_USER:-shopsphere}", RABBITMQ_PASSWORD: "${RABBITMQ_DEFAULT_PASS:-shopsphere_local_password}" }
-    depends_on: { rabbitmq: { condition: service_healthy } }
-    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"], interval: 15s, timeout: 5s, retries: 5, start_period: 45s }
-  cart-service:
-    build: { context: ., args: { MODULE: services/cart-service } }
-    environment: { SERVER_PORT: 8084, REDIS_HOST: redis }
+    environment:
+      JWT_SECRET: "${JWT_SECRET:-local-dev-jwt-secret-change-me-0123456789}"
+      REDIS_HOST: redis
+      AUTH_SERVICE_URL: http://auth-service:8080
+      PRODUCT_SERVICE_URL: http://product-service:8080
+      INVENTORY_SERVICE_URL: http://inventory-service:8080
+      CART_SERVICE_URL: http://cart-service:8080
+      ORDER_SERVICE_URL: http://order-service:8080
+      PAYMENT_SERVICE_URL: http://payment-service:8080
+      NOTIFICATION_SERVICE_URL: http://notification-service:8080
     depends_on: { redis: { condition: service_healthy } }
-    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health || exit 1"], interval: 15s, timeout: 5s, retries: 5, start_period: 45s }
+  auth-service:
+    <<: *java-service
+    build: { context: ., args: { MODULE: services/auth-service } }
+    image: shopsphere/auth-service:latest
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/shopsphere
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-shopsphere_local_password}"
+      JWT_SECRET: "${JWT_SECRET:-local-dev-jwt-secret-change-me-0123456789}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-Admin@12345}"
+    depends_on: { postgres: { condition: service_healthy } }
+  product-service:
+    <<: *java-service
+    build: { context: ., args: { MODULE: services/product-service } }
+    image: shopsphere/product-service:latest
+    environment: { MONGODB_URI: "mongodb://mongodb:27017/product_db" }
+    depends_on: { mongodb: { condition: service_healthy } }
+  inventory-service:
+    <<: *java-service
+    build: { context: ., args: { MODULE: services/inventory-service } }
+    image: shopsphere/inventory-service:latest
+    environment: *rabbit-env
+    depends_on: { rabbitmq: { condition: service_healthy } }
+  cart-service:
+    <<: *java-service
+    build: { context: ., args: { MODULE: services/cart-service } }
+    image: shopsphere/cart-service:latest
+    environment: { REDIS_HOST: redis }
+    depends_on: { redis: { condition: service_healthy } }
   order-service:
+    <<: *java-service
     build: { context: ., args: { MODULE: services/order-service } }
-    environment: { SERVER_PORT: 8085, RABBITMQ_HOST: rabbitmq, RABBITMQ_USERNAME: "${RABBITMQ_DEFAULT_USER:-shopsphere}", RABBITMQ_PASSWORD: "${RABBITMQ_DEFAULT_PASS:-shopsphere_local_password}" }
+    image: shopsphere/order-service:latest
+    environment:
+      <<: *rabbit-env
+      PRODUCT_SERVICE_URL: http://product-service:8080
     depends_on: { rabbitmq: { condition: service_healthy } }
-    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health || exit 1"], interval: 15s, timeout: 5s, retries: 5, start_period: 45s }
   payment-service:
+    <<: *java-service
     build: { context: ., args: { MODULE: services/payment-service } }
-    environment: { SERVER_PORT: 8086, RABBITMQ_HOST: rabbitmq, RABBITMQ_USERNAME: "${RABBITMQ_DEFAULT_USER:-shopsphere}", RABBITMQ_PASSWORD: "${RABBITMQ_DEFAULT_PASS:-shopsphere_local_password}", PAYMENT_FAILURE_RATE: "${PAYMENT_FAILURE_RATE:-0}" }
+    image: shopsphere/payment-service:latest
+    environment:
+      <<: *rabbit-env
+      PAYMENT_FAILURE_RATE: "${PAYMENT_FAILURE_RATE:-0}"
     depends_on: { rabbitmq: { condition: service_healthy } }
-    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost:8086/actuator/health || exit 1"], interval: 15s, timeout: 5s, retries: 5, start_period: 45s }
   notification-service:
+    <<: *java-service
     build: { context: ., args: { MODULE: services/notification-service } }
-    environment: { SERVER_PORT: 8087, RABBITMQ_HOST: rabbitmq, RABBITMQ_USERNAME: "${RABBITMQ_DEFAULT_USER:-shopsphere}", RABBITMQ_PASSWORD: "${RABBITMQ_DEFAULT_PASS:-shopsphere_local_password}" }
+    image: shopsphere/notification-service:latest
+    environment: *rabbit-env
     depends_on: { rabbitmq: { condition: service_healthy } }
-    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost:8087/actuator/health || exit 1"], interval: 15s, timeout: 5s, retries: 5, start_period: 45s }
+  report-job:
+    build: { context: ., args: { MODULE: services/report-job } }
+    image: shopsphere/report-job:latest
+    profiles: [ "jobs" ]
+
+volumes:
+  postgres-data:
+  mongo-data:

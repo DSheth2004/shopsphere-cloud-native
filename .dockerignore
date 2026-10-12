@@ -1,9 +1,14 @@
 .git
+.github
 .m2
 **/target
 .env
+.env.*
 docs
 infra
 k8s
 observability
 load-tests
+scripts
+frontend
+*.md

@@ -1,18 +1,41 @@
 package com.shopsphere.order;
-import com.shopsphere.common.web.CorrelationIdFilter;
-import org.springframework.amqp.core.*;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+
+import com.shopsphere.common.events.OrderEvents;
+import java.net.http.HttpClient;
+import java.time.Duration;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.TopicExchange;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-@SpringBootApplication public class OrderServiceApplication {
- public static void main(String[] args) { SpringApplication.run(OrderServiceApplication.class,args); }
- @Bean CorrelationIdFilter correlationIdFilter(){ return new CorrelationIdFilter(); }
- @Bean TopicExchange shopsphereEvents(){ return new TopicExchange("shopsphere.events",true,false); }
- @Bean Queue orderStockEvents(){ return new Queue("order.stock.events", true); }
- @Bean Queue orderPaymentEvents(){ return new Queue("order.payment.events", true); }
- @Bean Binding stockReservedBinding(Queue orderStockEvents, TopicExchange shopsphereEvents){ return BindingBuilder.bind(orderStockEvents).to(shopsphereEvents).with("stock.reserved"); }
- @Bean Binding paymentCompletedBinding(Queue orderPaymentEvents, TopicExchange shopsphereEvents){ return BindingBuilder.bind(orderPaymentEvents).to(shopsphereEvents).with("payment.completed"); }
- @Bean Binding paymentFailedBinding(Queue orderPaymentEvents, TopicExchange shopsphereEvents){ return BindingBuilder.bind(orderPaymentEvents).to(shopsphereEvents).with("payment.failed"); }
- @Bean Jackson2JsonMessageConverter messageConverter(){ return new Jackson2JsonMessageConverter(); }
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
+
+@SpringBootApplication
+public class OrderServiceApplication {
+    public static void main(String[] args) { SpringApplication.run(OrderServiceApplication.class, args); }
+
+    @Bean RestClient productClient(@Value("${shopsphere.product-service-url}") String baseUrl) {
+        JdkClientHttpRequestFactory requests = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build());
+        requests.setReadTimeout(Duration.ofSeconds(3));
+        return RestClient.builder().baseUrl(baseUrl).requestFactory(requests).build();
+    }
+
+    @Bean Queue orderSagaReplies() { return new Queue("order.saga-replies", true); }
+    @Bean Binding stockReservedBinding(Queue orderSagaReplies, TopicExchange shopsphereEvents) {
+        return BindingBuilder.bind(orderSagaReplies).to(shopsphereEvents).with(OrderEvents.STOCK_RESERVED);
+    }
+    @Bean Binding stockRejectedBinding(Queue orderSagaReplies, TopicExchange shopsphereEvents) {
+        return BindingBuilder.bind(orderSagaReplies).to(shopsphereEvents).with(OrderEvents.STOCK_REJECTED);
+    }
+    @Bean Binding paymentCompletedBinding(Queue orderSagaReplies, TopicExchange shopsphereEvents) {
+        return BindingBuilder.bind(orderSagaReplies).to(shopsphereEvents).with(OrderEvents.PAYMENT_COMPLETED);
+    }
+    @Bean Binding paymentFailedBinding(Queue orderSagaReplies, TopicExchange shopsphereEvents) {
+        return BindingBuilder.bind(orderSagaReplies).to(shopsphereEvents).with(OrderEvents.PAYMENT_FAILED);
+    }
 }

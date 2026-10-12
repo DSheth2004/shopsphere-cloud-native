@@ -1,0 +1,7 @@
+# Gitleaks configuration: keep the default rules, and allow the throwaway values used only by unit tests.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fixed secrets for in-memory test profiles; never used outside unit tests"
+paths = ['''src/test/resources/''']

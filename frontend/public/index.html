@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShopSphere</title>
+  <meta name="description" content="ShopSphere: a cloud-native e-commerce demo built from Spring Boot microservices.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234f46e5'/%3E%3Ctext x='32' y='42' font-size='28' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'%3ES%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/shop" aria-label="ShopSphere home"><span class="brand-mark">S</span><span>ShopSphere</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="#/shop" data-route="shop">Shop</a>
+        <a href="#/orders" data-route="orders">My orders</a>
+        <a href="#/platform" data-route="platform">Platform</a>
+        <a href="#/admin" data-route="admin" class="admin-only" hidden>Admin</a>
+      </nav>
+      <div class="actions">
+        <button class="icon-btn" id="bell" aria-label="Notifications" hidden>🔔<span class="badge" id="bell-count" hidden>0</span></button>
+        <button class="icon-btn" id="cart-btn" aria-label="Open cart">🛒<span class="badge" id="cart-count" hidden>0</span></button>
+        <button class="btn btn-ghost" id="signin-btn">Sign in</button>
+        <div class="user-chip" id="user-chip" hidden>
+          <span class="avatar" id="user-avatar"></span>
+          <span id="user-name"></span>
+          <button class="link" id="signout-btn">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="notif-panel" id="notif-panel" hidden>
+    <h3>Notifications</h3>
+    <ul id="notif-list"></ul>
+  </div>
+
+  <main id="app">
+    <section class="view" id="view-shop">
+      <div class="hero">
+        <div>
+          <p class="eyebrow">Cloud-native commerce</p>
+          <h1>Everything you need, delivered by eight microservices.</h1>
+          <p class="muted">Browse the catalogue, fill your cart and watch the order saga move through inventory, payment and notification services in real time.</p>
+        </div>
+        <div class="hero-art" aria-hidden="true">🛍️</div>
+      </div>
+      <div class="toolbar">
+        <input type="search" id="search" placeholder="Search products…" aria-label="Search products">
+        <div class="chips" id="categories" role="tablist" aria-label="Categories"></div>
+      </div>
+      <div class="grid" id="products" aria-live="polite"></div>
+    </section>
+
+    <section class="view" id="view-orders" hidden>
+      <div class="section-head">
+        <h2>My orders</h2>
+        <p class="muted">Each order runs a saga: order-service publishes an event, inventory reserves stock, payment charges the card, and notification tells you the result.</p>
+      </div>
+      <div id="orders"></div>
+    </section>
+
+    <section class="view" id="view-platform" hidden>
+      <div class="section-head">
+        <h2>Platform status</h2>
+        <p class="muted">Live health of every microservice, checked through the API gateway.</p>
+      </div>
+      <div class="health-grid" id="health"></div>
+      <div class="arch card">
+        <h3>How a request flows</h3>
+        <ol class="flow">
+          <li><b>Browser → Frontend (nginx)</b> serves this UI and proxies <code>/api</code>.</li>
+          <li><b>API Gateway</b> validates the JWT, rate-limits sign-in and routes to the right service.</li>
+          <li><b>Auth</b> (PostgreSQL), <b>Product</b> (MongoDB), <b>Cart</b> (Redis), <b>Order</b> and <b>Inventory</b> each own their data.</li>
+          <li><b>RabbitMQ</b> carries saga events between Order, Inventory, Payment and Notification.</li>
+          <li>Everything ships as Docker images, built and scanned in GitHub Actions and deployed to Kubernetes.</li>
+        </ol>
+        <div class="tags">
+          <span>Spring Boot 3.5</span><span>Java 21</span><span>Docker</span><span>Kubernetes</span><span>Terraform</span><span>GitHub Actions</span><span>Trivy</span><span>Gitleaks</span><span>CodeQL</span><span>AWS EC2</span><span>Prometheus</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-admin" hidden>
+      <div class="section-head">
+        <h2>Store admin</h2>
+        <p class="muted">Only accounts with the ADMIN role get past the gateway for these calls.</p>
+      </div>
+      <div class="admin-grid">
+        <form class="card form" id="product-form">
+          <h3>Add a product</h3>
+          <label>Name<input name="name" required maxlength="80"></label>
+          <label>Description<textarea name="description" maxlength="400" rows="2"></textarea></label>
+          <div class="row">
+            <label>Price (₹)<input name="price" type="number" min="1" step="0.01" required></label>
+            <label>Category<input name="category" required list="category-list"></label>
+            <label>Icon<input name="image" maxlength="4" placeholder="📦"></label>
+          </div>
+          <datalist id="category-list"></datalist>
+          <label>Initial stock<input name="stock" type="number" min="0" value="10"></label>
+          <button class="btn" type="submit">Create product</button>
+        </form>
+        <div class="card">
+          <h3>Stock levels</h3>
+          <table class="stock-table"><thead><tr><th>Product</th><th>SKU</th><th>Stock</th><th></th></tr></thead><tbody id="stock-rows"></tbody></table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <aside class="drawer" id="cart-drawer" aria-label="Shopping cart" hidden>
+    <div class="drawer-head"><h2>Your cart</h2><button class="icon-btn" id="cart-close" aria-label="Close cart">✕</button></div>
+    <div class="drawer-body" id="cart-items"></div>
+    <div class="drawer-foot">
+      <div class="subtotal"><span>Subtotal</span><b id="cart-subtotal">₹0</b></div>
+      <button class="btn btn-block" id="checkout-btn" disabled>Place order</button>
+      <p class="hint">Tip: orders above ₹50,000 are declined by the mock payment service, so you can see the saga compensate and release stock.</p>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <dialog id="auth-dialog">
+    <form method="dialog" class="auth" id="auth-form">
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab active" data-mode="login">Sign in</button>
+        <button type="button" class="tab" data-mode="register">Create account</button>
+      </div>
+      <label class="register-only" hidden>Name<input name="name" autocomplete="name" maxlength="60"></label>
+      <label>Email<input name="email" type="email" required autocomplete="email"></label>
+      <label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password"></label>
+      <p class="error" id="auth-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="auth-cancel">Cancel</button>
+        <button type="submit" class="btn" id="auth-submit">Sign in</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="assertive"></div>
+  <footer class="footer">ShopSphere · CNA DevOps capstone · <span id="footer-env"></span></footer>
+  <script src="app.js"></script>
+</body>
+</html>

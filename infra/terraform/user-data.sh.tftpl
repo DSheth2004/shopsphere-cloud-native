@@ -1,0 +1,54 @@
+#!/bin/bash
+# Boot script for the ShopSphere k3s node (Amazon Linux 2023). Logs: /var/log/shopsphere-bootstrap.log
+set -euxo pipefail
+exec > >(tee -a /var/log/shopsphere-bootstrap.log) 2>&1
+
+# 2 GiB swap gives the JVMs headroom on a 4 GiB instance.
+if [ ! -f /swapfile ]; then
+  dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+dnf install -y git openssl
+
+if ! command -v k3s >/dev/null; then
+  curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=stable INSTALL_K3S_SKIP_SELINUX_RPM=true sh -s - --write-kubeconfig-mode 600
+fi
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl || true
+
+mkdir -p /opt/shopsphere
+if [ ! -f /opt/shopsphere/secrets.env ]; then
+  ADMIN_PASSWORD=$(aws ssm get-parameter --region ${aws_region} --name ${admin_param} --with-decryption --query Parameter.Value --output text)
+  umask 077
+  cat > /opt/shopsphere/secrets.env <<SECRETS
+JWT_SECRET=$(openssl rand -hex 32)
+ADMIN_PASSWORD=$${ADMIN_PASSWORD}
+POSTGRES_PASSWORD=$(openssl rand -hex 16)
+RABBITMQ_USERNAME=shopsphere
+RABBITMQ_PASSWORD=$(openssl rand -hex 16)
+SECRETS
+fi
+
+cat > /opt/shopsphere/deploy.sh <<'DEPLOY'
+#!/bin/bash
+# Pulls the latest manifests and rolls every deployment onto the newest images from GHCR.
+set -euo pipefail
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+BRANCH="$${1:-${git_branch}}"
+if [ ! -d /opt/shopsphere/src/.git ]; then
+  git clone --depth 1 --branch "$BRANCH" ${repo_url} /opt/shopsphere/src
+fi
+cd /opt/shopsphere/src
+git fetch --depth 1 origin "$BRANCH"
+git reset --hard FETCH_HEAD
+install -m 600 /opt/shopsphere/secrets.env k8s/overlays/aws/secrets.env
+kubectl apply -k k8s/overlays/aws
+kubectl -n shopsphere rollout restart deployment
+kubectl -n shopsphere rollout status deployment --timeout=900s
+DEPLOY
+chmod 700 /opt/shopsphere/deploy.sh
+
+until kubectl get nodes 2>/dev/null | grep -q ' Ready'; do sleep 5; done
+/opt/shopsphere/deploy.sh || echo "First rollout still in progress; check with: kubectl -n shopsphere get pods"

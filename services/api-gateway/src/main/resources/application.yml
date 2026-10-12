@@ -1,21 +1,64 @@
 spring:
   application: { name: api-gateway }
-  cloud.gateway.routes:
-    - id: auth
-      uri: ${AUTH_SERVICE_URL:http://localhost:8081}
-      predicates: [ Path=/api/auth/** ]
-    - id: product
-      uri: ${PRODUCT_SERVICE_URL:http://localhost:8082}
-      predicates: [ Path=/api/products/** ]
-    - id: cart
-      uri: ${CART_SERVICE_URL:http://localhost:8084}
-      predicates: [ Path=/api/carts/** ]
-    - id: order
-      uri: ${ORDER_SERVICE_URL:http://localhost:8085}
-      predicates: [ Path=/api/orders/** ]
+  data.redis: { host: "${REDIS_HOST:localhost}", port: "${REDIS_PORT:6379}" }
+  cloud.gateway.server.webflux:
+    default-filters: [ RemoveResponseHeader=X-Powered-By ]
+    routes:
+      - id: auth
+        uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+        predicates: [ "Path=/api/auth/**" ]
+        filters:
+          - name: RequestRateLimiter
+            args: { key-resolver: "#{@clientIpKeyResolver}", redis-rate-limiter.replenishRate: 5, redis-rate-limiter.burstCapacity: 10 }
+      - id: product
+        uri: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+        predicates: [ "Path=/api/products/**" ]
+      - id: inventory
+        uri: ${INVENTORY_SERVICE_URL:http://localhost:8083}
+        predicates: [ "Path=/api/inventory/**" ]
+      - id: cart
+        uri: ${CART_SERVICE_URL:http://localhost:8084}
+        predicates: [ "Path=/api/carts/**" ]
+      - id: order
+        uri: ${ORDER_SERVICE_URL:http://localhost:8085}
+        predicates: [ "Path=/api/orders/**" ]
+      - id: notification
+        uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8087}
+        predicates: [ "Path=/api/notifications/**" ]
+      - id: auth-health
+        uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+        predicates: [ "Path=/status/auth", "Method=GET" ]
+        filters: [ "SetPath=/actuator/health" ]
+      - id: product-health
+        uri: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+        predicates: [ "Path=/status/product", "Method=GET" ]
+        filters: [ "SetPath=/actuator/health" ]
+      - id: inventory-health
+        uri: ${INVENTORY_SERVICE_URL:http://localhost:8083}
+        predicates: [ "Path=/status/inventory", "Method=GET" ]
+        filters: [ "SetPath=/actuator/health" ]
+      - id: cart-health
+        uri: ${CART_SERVICE_URL:http://localhost:8084}
+        predicates: [ "Path=/status/cart", "Method=GET" ]
+        filters: [ "SetPath=/actuator/health" ]
+      - id: order-health
+        uri: ${ORDER_SERVICE_URL:http://localhost:8085}
+        predicates: [ "Path=/status/order", "Method=GET" ]
+        filters: [ "SetPath=/actuator/health" ]
+      - id: payment-health
+        uri: ${PAYMENT_SERVICE_URL:http://localhost:8086}
+        predicates: [ "Path=/status/payment", "Method=GET" ]
+        filters: [ "SetPath=/actuator/health" ]
+      - id: notification-health
+        uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8087}
+        predicates: [ "Path=/status/notification", "Method=GET" ]
+        filters: [ "SetPath=/actuator/health" ]
+shopsphere:
+  jwt: { secret: "${JWT_SECRET}" }
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
 management:
   endpoints.web.exposure.include: health,prometheus
   endpoint.health.probes.enabled: true
+  health.redis.enabled: false

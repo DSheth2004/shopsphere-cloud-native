@@ -1,5 +1,6 @@
 package com.shopsphere.notification;
-import com.shopsphere.common.web.CorrelationIdFilter;
+
+import com.shopsphere.common.events.OrderEvents;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
@@ -11,13 +12,13 @@ import org.springframework.context.annotation.Bean;
 @SpringBootApplication
 public class NotificationServiceApplication {
     public static void main(String[] args) { SpringApplication.run(NotificationServiceApplication.class, args); }
-    @Bean CorrelationIdFilter correlationIdFilter() { return new CorrelationIdFilter(); }
-    @Bean TopicExchange shopsphereEvents() { return new TopicExchange("shopsphere.events", true, false); }
-    @Bean Queue notificationEvents() { return new Queue("notification.events", true); }
-    @Bean Binding confirmedOrders(Queue notificationEvents, TopicExchange shopsphereEvents) {
-        return BindingBuilder.bind(notificationEvents).to(shopsphereEvents).with("order.confirmed");
+
+    @Bean Queue confirmedOrders() { return new Queue("notification.order-confirmed", true); }
+    @Bean Queue cancelledOrders() { return new Queue("notification.order-cancelled", true); }
+    @Bean Binding confirmedBinding(Queue confirmedOrders, TopicExchange shopsphereEvents) {
+        return BindingBuilder.bind(confirmedOrders).to(shopsphereEvents).with(OrderEvents.ORDER_CONFIRMED);
     }
-    @Bean Binding cancelledOrders(Queue notificationEvents, TopicExchange shopsphereEvents) {
-        return BindingBuilder.bind(notificationEvents).to(shopsphereEvents).with("order.cancelled");
+    @Bean Binding cancelledBinding(Queue cancelledOrders, TopicExchange shopsphereEvents) {
+        return BindingBuilder.bind(cancelledOrders).to(shopsphereEvents).with(OrderEvents.ORDER_CANCELLED);
     }
 }
