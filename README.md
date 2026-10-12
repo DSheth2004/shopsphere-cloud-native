@@ -37,6 +37,16 @@ make verify
 
 Expected result: Maven reports `BUILD SUCCESS`. Start the local platform with `make up`, then use `http://localhost:8080/actuator/health`. Stop it with `make down`.
 
+## Local smoke test
+
+After all containers are healthy, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1
+```
+
+It verifies the gateway and sends a unique register, product, cart, and order request.
+
 ## Repository conventions
 
 - Java packages use `com.shopsphere`.

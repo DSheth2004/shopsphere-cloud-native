@@ -19,6 +19,6 @@ import org.springframework.web.bind.annotation.*;
  @GetMapping("/{id}") public Order get(@PathVariable UUID id){Order value=orders.get(id);if(value==null)throw new IllegalArgumentException("Order not found");return value;}
  @PostMapping("/{id}/confirm") public Order confirm(@PathVariable UUID id){return transition(id,Status.CONFIRMED);}
  @PostMapping("/{id}/cancel") public Order cancel(@PathVariable UUID id){return transition(id,Status.CANCELLED);}
- private Order transition(UUID id,Status status){Order old=get(id);Order next=new Order(id,old.userId(),old.total(),status);orders.put(id,next);return next;}
+ Order transition(UUID id,Status status){Order old=get(id);Order next=new Order(id,old.userId(),old.total(),status);orders.put(id,next);return next;}
  public record CreateOrder(String userId,BigDecimal total){} public record Order(UUID id,String userId,BigDecimal total,Status status){} public enum Status{PENDING,STOCK_RESERVED,PAID,CONFIRMED,CANCELLED}
 }

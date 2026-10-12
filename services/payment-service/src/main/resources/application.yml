@@ -1,8 +1,12 @@
 spring:
   application: { name: payment-service }
   rabbitmq.host: ${RABBITMQ_HOST:localhost}
-server: { port: ${SERVER_PORT:8086}, shutdown: graceful }
-shopsphere.payment.failure-rate: ${PAYMENT_FAILURE_RATE:0.0}
+  rabbitmq.username: ${RABBITMQ_USERNAME:shopsphere}
+  rabbitmq.password: ${RABBITMQ_PASSWORD:shopsphere_local_password}
+server:
+  port: ${SERVER_PORT:8086}
+  shutdown: graceful
+shopsphere.payment.failure-rate: "${PAYMENT_FAILURE_RATE:0.0}"
 resilience4j:
   circuitbreaker.instances.charge.sliding-window-size: 10
   retry.instances.charge.max-attempts: 3

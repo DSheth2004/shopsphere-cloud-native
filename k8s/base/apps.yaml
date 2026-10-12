@@ -10,7 +10,8 @@ spec:
       terminationGracePeriodSeconds: 35
       containers:
         - name: api-gateway
-          image: shopsphere/api-gateway:latest
+          image: shopsphere-api-gateway:latest
+          imagePullPolicy: IfNotPresent
           ports: [{ containerPort: 8080 }]
           envFrom: [{ configMapRef: { name: shopsphere-config } }]
           resources: { requests: { cpu: 250m, memory: 512Mi }, limits: { cpu: "1", memory: 768Mi } }
