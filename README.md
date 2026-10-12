@@ -2,6 +2,8 @@
 
 ShopSphere is a cloud-native e-commerce platform built for the CNA DevOps assignment. It has eight Spring Boot microservices behind an API gateway, a browser storefront, polyglot persistence, an event-driven order saga over RabbitMQ, Docker images, Kubernetes manifests, Terraform for AWS, and GitHub Actions for CI, CD and security scanning.
 
+**Live demo:** http://3.7.14.126 (AWS EC2 + k3s, Mumbai). The server stops every night at 23:00 IST to save credits; start it with `terraform output -raw start_command`.
+
 ![stack](https://img.shields.io/badge/Java-21-blue) ![stack](https://img.shields.io/badge/Spring%20Boot-4.0-brightgreen) ![stack](https://img.shields.io/badge/Kubernetes-k3s%20%7C%20kind-326ce5) ![stack](https://img.shields.io/badge/IaC-Terraform-7b42bc)
 
 ## Architecture
@@ -82,7 +84,7 @@ Kubernetes features used (`k8s/base`): Deployments with readiness/liveness/start
 
 Terraform in `infra/terraform` creates one small, cost-controlled environment:
 
-- one `t3.medium` EC2 instance in the default VPC running k3s, with an Elastic IP (no NAT gateway, no load balancer, no EKS)
+- one `c7i-flex.large` EC2 instance (4 GiB, allowed on the AWS Free plan) in the default VPC running k3s, with an Elastic IP (no NAT gateway, no load balancer, no EKS)
 - IAM role for SSM Session Manager (no SSH keys needed) and a GitHub OIDC role that can only run the deploy command
 - AWS Budget alerts and a nightly stop schedule (23:00 IST)
 
@@ -94,7 +96,7 @@ terraform apply
 terraform output app_url                        # the public link
 ```
 
-The node pulls images from GHCR, so run the CD workflow once first and make the `shopsphere-*` packages public (GitHub, Packages, Package settings, Change visibility). See [infra/terraform/README.md](infra/terraform/README.md) for details and [docs/COST.md](docs/COST.md) for the cost estimate. Run `terraform destroy` once you have been graded.
+The node pulls images from GHCR, so run the CD workflow once first and make the `shopsphere-*` packages public (GitHub, Packages, Package settings, Change visibility). See [infra/terraform/README.md](infra/terraform/README.md) for details and [docs/COST.md](docs/COST.md) for the cost estimate. If the link shows an error, `scripts/aws-diagnose.ps1` prints pod status, an admin login check and recent logs from the node through SSM. Run `terraform destroy` once you have been graded.
 
 ## CI/CD and DevSecOps
 

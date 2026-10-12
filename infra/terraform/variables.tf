@@ -5,9 +5,9 @@ variable "aws_region" {
 }
 
 variable "instance_type" {
-  description = "Single k3s node. t3.medium (4 GiB) fits all 13 pods with the 2 GiB swap file added at boot."
+  description = "Single k3s node. 4 GiB fits all 13 pods with the 2 GiB swap file added at boot. c7i-flex.large is allowed on the AWS Free plan; t3.medium also works on paid accounts."
   type        = string
-  default     = "t3.medium"
+  default     = "c7i-flex.large"
 }
 
 variable "root_volume_gb" {

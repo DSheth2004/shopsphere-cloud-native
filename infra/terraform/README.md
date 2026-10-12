@@ -6,7 +6,7 @@ This Terraform creates the public ShopSphere environment on a single EC2 instanc
 
 | File | Resources |
 | --- | --- |
-| `main.tf` | Security group (HTTP 80 only, optional SSH from one CIDR), `t3.medium` Amazon Linux 2023 instance with encrypted gp3 volume and IMDSv2, Elastic IP, random admin password stored as an SSM SecureString |
+| `main.tf` | Security group (HTTP 80 only, optional SSH from one CIDR), `c7i-flex.large` (4 GiB) Amazon Linux 2023 instance with encrypted gp3 volume and IMDSv2, Elastic IP, random admin password stored as an SSM SecureString |
 | `iam.tf` | Instance role (SSM Session Manager + read of its own parameter), GitHub Actions OIDC provider and a deploy role that can only run `AWS-RunShellScript` on this instance |
 | `cost-controls.tf` | Monthly AWS Budget with email alerts, EventBridge Scheduler that stops the instance every night |
 | `user-data.sh.tftpl` | First boot: swap file, k3s, generated cluster secrets, `/opt/shopsphere/deploy.sh`, first deployment of `k8s/overlays/aws` |
