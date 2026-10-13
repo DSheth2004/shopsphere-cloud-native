@@ -19,6 +19,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write   # keyless cosign signing (Sigstore OIDC)
     strategy:
       fail-fast: false
       matrix:
@@ -56,7 +57,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Push image
-        run: docker push --all-tags "$IMAGE"
+        run: |
+          docker push --all-tags "$IMAGE"
+          echo "DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE:sha-$SHORT_SHA")" >> "$GITHUB_ENV"
+      - name: Generate SBOM (CycloneDX)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.DIGEST }}
+          format: cyclonedx
+          output: sbom-${{ matrix.image }}.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.image }}
+          path: sbom-${{ matrix.image }}.cdx.json
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign image and attach SBOM attestation (cosign keyless)
+        run: |
+          cosign sign --yes "$DIGEST"
+          cosign attest --yes --type cyclonedx --predicate "sbom-${{ matrix.image }}.cdx.json" "$DIGEST"
 
   deploy:
     name: Deploy to AWS (k3s on EC2)

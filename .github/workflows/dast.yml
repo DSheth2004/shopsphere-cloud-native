@@ -1,0 +1,28 @@
+name: DAST
+
+# Dynamic scan of the running storefront with the OWASP ZAP baseline (passive) scan.
+# Start the EC2 instance first; it is stopped every night to save credits.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: URL to scan (for example the value of `terraform output app_url`)
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  zap-baseline:
+    name: OWASP ZAP baseline scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZAP baseline
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ inputs.target }}
+          rules_file_name: .zap/rules.tsv
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: zap-report
