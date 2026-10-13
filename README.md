@@ -474,6 +474,7 @@ flowchart LR
   Merge[Merge to master] --> CD[CD: build 10 images]
   CD --> Scan[Trivy image scan<br/>fail on fixable HIGH/CRITICAL]
   Scan --> GHCR[(GHCR)]
+  GHCR --> Sign[SBOM + cosign signature]
   GHCR --> Deploy[OIDC → SSM → deploy.sh on EC2]
 ```
 
@@ -482,7 +483,8 @@ flowchart LR
 | `ci.yml` | push, PR | Maven `verify` with unit tests and JaCoCo coverage; frontend syntax check; `docker compose config`; Kustomize render of both overlays plus `kubeconform` schema validation; sample Docker builds on PRs |
 | `security.yml` | push, PR, weekly | Gitleaks secret scan; Trivy dependency scan (fails on fixable HIGH/CRITICAL); Trivy IaC scan of Dockerfiles, Kubernetes and Terraform with SARIF upload to GitHub code scanning; dependency review on PRs |
 | `codeql.yml` | push, PR, weekly | CodeQL static analysis for Java and JavaScript |
-| `cd.yml` | push to `master`/`main`, manual | Builds all 10 images, scans each with Trivy, pushes `latest` and `sha-<commit>` tags to GHCR, then deploys to EC2 through SSM when the AWS variables are set |
+| `cd.yml` | push to `master`/`main`, manual | Builds all 10 images, scans each with Trivy, pushes `latest` and `sha-<commit>` tags to GHCR, generates a CycloneDX SBOM, signs each image and attaches the SBOM as an attestation with cosign (keyless), then deploys to EC2 through SSM when the AWS variables are set |
+| `dast.yml` | manual | OWASP ZAP baseline scan of the running site (pass the public URL) |
 | `terraform.yml` | changes in `infra/` | `terraform fmt -check`, `init`, `validate` |
 
 Branch workflow: work on a feature branch, open a PR, and merge when every check is green (see [docs/git-workflow.md](docs/git-workflow.md)).
@@ -495,6 +497,14 @@ Branch workflow: work on a feature branch, open a PR, and merge when every check
 - **Secrets:** Gitleaks on every push. `.gitleaks.toml` allowlists only test fixtures.
 - **Dependencies:** Trivy filesystem scan, plus Dependency Review on PRs. Patched versions are pinned in the parent `pom.xml`.
 - **Images:** Trivy scan of every image before it is pushed.
+- **Supply chain:** every pushed image gets a CycloneDX SBOM (kept as a workflow artifact) and is signed with cosign keyless signing. The SBOM is attached as a signed attestation, so anyone can check where an image came from:
+
+  ```bash
+  cosign verify ghcr.io/dsheth2004/shopsphere-frontend:latest \
+    --certificate-identity-regexp 'https://github.com/DSheth2004/shopsphere-cloud-native/.*' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  ```
+- **Running app (DAST):** the **DAST** workflow (Actions, DAST, Run workflow) runs an OWASP ZAP baseline scan against the live link. It fails if the clickjacking or Content-Security-Policy protections go missing.
 - **IaC:** Trivy config scan. `.trivyignore` lists only checks that cannot apply here, each with a reason.
 - **Code:** CodeQL for Java and JavaScript.
 

@@ -1,0 +1,4 @@
+# ZAP baseline rule overrides: <rule id>\t<IGNORE|WARN|FAIL>\t<reason>
+# Missing anti-clickjacking header and CSP are enforced by nginx; fail the scan if they regress.
+10020	FAIL	(X-Frame-Options / frame-ancestors)
+10038	FAIL	(Content Security Policy header)
