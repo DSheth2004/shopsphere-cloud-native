@@ -82,7 +82,8 @@ jobs:
     # Runs once Terraform has been applied and the two repository variables are set.
     if: vars.AWS_DEPLOY_ROLE_ARN != '' && vars.EC2_INSTANCE_ID != ''
     runs-on: ubuntu-latest
-    environment: production
+    # No `environment:` here: it would change the OIDC subject to repo:<repo>:environment:<name>,
+    # and the AWS deploy role only trusts repo:<repo>:ref:refs/heads/<branch> (infra/terraform/iam.tf).
     permissions:
       contents: read
       id-token: write
