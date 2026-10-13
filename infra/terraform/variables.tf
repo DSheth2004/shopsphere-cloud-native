@@ -34,6 +34,18 @@ variable "github_repository" {
   default     = "DSheth2004/shopsphere-cloud-native"
 }
 
+variable "github_owner_id" {
+  description = "Numeric GitHub id of the repository owner (gh api repos/OWNER/REPO --jq .owner.id). Part of the OIDC subject for repositories created after 2026-07-15."
+  type        = string
+  default     = "180089696"
+}
+
+variable "github_repository_id" {
+  description = "Numeric GitHub id of the repository (gh api repos/OWNER/REPO --jq .id)."
+  type        = string
+  default     = "1415129891"
+}
+
 variable "create_github_oidc_provider" {
   description = "Set to false if this AWS account already has the token.actions.githubusercontent.com OIDC provider."
   type        = bool
