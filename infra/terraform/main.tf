@@ -17,6 +17,11 @@ resource "aws_ssm_parameter" "admin_password" {
   description = "Storefront administrator password, read by the node at boot."
   type        = "SecureString"
   value       = random_password.admin.result
+
+  # Keep the stored password if the random_password is ever regenerated (e.g. after re-importing into a fresh state).
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
 
 resource "aws_security_group" "node" {
@@ -91,6 +96,12 @@ resource "aws_instance" "node" {
   }
 
   tags = { Name = "shopsphere-k3s" }
+
+  # The AMI lookup always returns the newest Amazon Linux image; never replace the running node just because AWS
+  # published a newer one or because the boot script changed after the node was built.
+  lifecycle {
+    ignore_changes = [ami, user_data]
+  }
 }
 
 # A fixed public IP keeps the demo link the same across stop/start cycles.

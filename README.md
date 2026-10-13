@@ -423,6 +423,20 @@ To bring the environment back later, run `terraform apply` again (see above).
 
 If you only want to pause spending for a few days, stopping the instance is enough (about $0.20/day while stopped, versus about $1.30/day running).
 
+### If the Terraform state was lost
+
+`terraform.tfstate` is local and never committed. If it is deleted, `terraform apply` fails with "already exists" errors and `terraform destroy` removes nothing. Re-attach the existing AWS resources to a fresh state instead:
+
+```powershell
+cd infra/terraform
+terraform init
+# terraform.tfvars must exist (copy terraform.tfvars.example and set budget_email)
+.\import-existing.ps1     # looks up the instance, security group and Elastic IP, then runs terraform import for each resource
+terraform plan             # expect only in-place tag/policy updates: no "destroy" and no "must be replaced"
+```
+
+After that, `terraform apply` and `terraform destroy` work normally again. The stored admin password and the running instance are kept as they are.
+
 ---
 
 ## Configuration
