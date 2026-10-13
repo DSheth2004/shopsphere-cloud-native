@@ -1,5 +1,9 @@
 spring:
   application: { name: inventory-service }
+  # State lives in this service's own MongoDB database so it survives pod and node restarts.
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/inventory_db}
+    representation.uuid: standard
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     username: ${RABBITMQ_USERNAME:shopsphere}

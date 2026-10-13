@@ -215,6 +215,7 @@ spec:
           imagePullPolicy: IfNotPresent
           ports: [{ name: http, containerPort: 8080 }]
           env:
+            - { name: MONGODB_URI, valueFrom: { configMapKeyRef: { name: shopsphere-config, key: INVENTORY_MONGODB_URI } } }
             - { name: RABBITMQ_HOST, valueFrom: { configMapKeyRef: { name: shopsphere-config, key: RABBITMQ_HOST } } }
             - { name: RABBITMQ_USERNAME, valueFrom: { secretKeyRef: { name: shopsphere-secrets, key: RABBITMQ_USERNAME } } }
             - { name: RABBITMQ_PASSWORD, valueFrom: { secretKeyRef: { name: shopsphere-secrets, key: RABBITMQ_PASSWORD } } }
@@ -307,6 +308,7 @@ spec:
           imagePullPolicy: IfNotPresent
           ports: [{ name: http, containerPort: 8080 }]
           env:
+            - { name: MONGODB_URI, valueFrom: { configMapKeyRef: { name: shopsphere-config, key: ORDER_MONGODB_URI } } }
             - { name: RABBITMQ_HOST, valueFrom: { configMapKeyRef: { name: shopsphere-config, key: RABBITMQ_HOST } } }
             - { name: PRODUCT_SERVICE_URL, valueFrom: { configMapKeyRef: { name: shopsphere-config, key: PRODUCT_SERVICE_URL } } }
             - { name: RABBITMQ_USERNAME, valueFrom: { secretKeyRef: { name: shopsphere-secrets, key: RABBITMQ_USERNAME } } }
@@ -403,6 +405,7 @@ spec:
           imagePullPolicy: IfNotPresent
           ports: [{ name: http, containerPort: 8080 }]
           env:
+            - { name: MONGODB_URI, valueFrom: { configMapKeyRef: { name: shopsphere-config, key: NOTIFICATION_MONGODB_URI } } }
             - { name: RABBITMQ_HOST, valueFrom: { configMapKeyRef: { name: shopsphere-config, key: RABBITMQ_HOST } } }
             - { name: RABBITMQ_USERNAME, valueFrom: { secretKeyRef: { name: shopsphere-secrets, key: RABBITMQ_USERNAME } } }
             - { name: RABBITMQ_PASSWORD, valueFrom: { secretKeyRef: { name: shopsphere-secrets, key: RABBITMQ_PASSWORD } } }

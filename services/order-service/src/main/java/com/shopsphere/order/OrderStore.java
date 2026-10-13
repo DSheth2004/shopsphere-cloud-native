@@ -1,34 +1,29 @@
 package com.shopsphere.order;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 
+/** Orders are persisted in MongoDB, so a user's order history survives restarts. */
 @Component
 public class OrderStore {
-    private final Map<UUID, Order> orders = new ConcurrentHashMap<>();
+    private final OrderRepository orders;
 
-    Order save(Order order) { orders.put(order.id(), order); return order; }
+    OrderStore(OrderRepository orders) { this.orders = orders; }
+
+    Order save(Order order) { return orders.save(order); }
 
     Order get(UUID id) {
-        Order order = orders.get(id);
-        if (order == null) throw new NoSuchElementException("Order not found");
-        return order;
+        return orders.findById(id).orElseThrow(() -> new NoSuchElementException("Order not found"));
     }
 
-    List<Order> forUser(String userId) {
-        return orders.values().stream().filter(order -> order.userId().equals(userId))
-                .sorted(Comparator.comparing(Order::createdAt).reversed()).toList();
-    }
+    List<Order> forUser(String userId) { return orders.findByUserIdOrderByCreatedAtDesc(userId); }
 
-    Order transition(UUID id, Order.Status status, String note) {
-        return orders.compute(id, (key, current) -> {
-            if (current == null) throw new NoSuchElementException("Order not found");
-            return current.transition(status, note);
-        });
+    /** Read-modify-write; synchronized because saga replies for one order can arrive back to back (single replica). */
+    synchronized Order transition(UUID id, Order.Status status, String note) {
+        Order current = get(id);
+        Order next = current.transition(status, note);
+        return next == current ? current : orders.save(next);
     }
 }

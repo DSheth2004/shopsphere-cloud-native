@@ -12,6 +12,9 @@ data:
   API_GATEWAY_URL: http://api-gateway:8080
   DB_URL: jdbc:postgresql://postgres:5432/shopsphere
   MONGODB_URI: mongodb://mongodb:27017/product_db
+  ORDER_MONGODB_URI: mongodb://mongodb:27017/order_db
+  INVENTORY_MONGODB_URI: mongodb://mongodb:27017/inventory_db
+  NOTIFICATION_MONGODB_URI: mongodb://mongodb:27017/notification_db
   REDIS_HOST: redis
   RABBITMQ_HOST: rabbitmq
   PAYMENT_FAILURE_RATE: "0"

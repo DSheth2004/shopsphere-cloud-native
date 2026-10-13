@@ -42,9 +42,11 @@ Reservation and release are idempotent per order id, so redelivered messages are
 | Service | Store |
 | --- | --- |
 | auth | PostgreSQL (`users` table) |
-| product | MongoDB (`products` collection) |
-| cart, gateway rate limiter | Redis |
-| inventory, order, notification | in-memory (demo scope) |
+| product | MongoDB (`product_db`) |
+| order | MongoDB (`order_db`) |
+| inventory | MongoDB (`inventory_db`: stock levels and reservations) |
+| notification | MongoDB (`notification_db`) |
+| cart, gateway rate limiter | Redis (append-only file on a volume) |
 | payment, report job | none |
 
 ## Environments
