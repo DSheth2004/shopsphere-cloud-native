@@ -48,6 +48,8 @@ resource "aws_iam_openid_connect_provider" "github" {
 data "aws_caller_identity" "current" {}
 
 locals {
+  github_owner    = split("/", var.github_repository)[0]
+  github_repo     = split("/", var.github_repository)[1]
   github_oidc_arn = var.create_github_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
 }
 
@@ -66,7 +68,12 @@ data "aws_iam_policy_document" "github_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:ref:refs/heads/${var.git_branch}"]
+      # GitHub issues the immutable form (owner@id/repo@id) for repositories created after 2026-07-15
+      # and the name-only form for older ones; trust both, pinned to this repository and branch.
+      values = [
+        "repo:${local.github_owner}@${var.github_owner_id}/${local.github_repo}@${var.github_repository_id}:ref:refs/heads/${var.git_branch}",
+        "repo:${var.github_repository}:ref:refs/heads/${var.git_branch}",
+      ]
     }
   }
 }
