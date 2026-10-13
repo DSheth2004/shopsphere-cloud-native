@@ -111,15 +111,15 @@ More detail is in [docs/architecture.md](docs/architecture.md) and [docs/pattern
 | `api-gateway` | 8080 | Spring Cloud Gateway: single entry point; JWT validation; USER/ADMIN access rules; header-spoofing protection; Redis rate limiting on `/api/auth` (5 requests/s, burst 10, per client IP) | Redis |
 | `auth-service` | 8081 | Register, login, `/me`; BCrypt password hashes; signs JWTs; seeds the admin account | PostgreSQL |
 | `product-service` | 8082 | Catalogue search, categories, admin CRUD; seeds 12 demo products | MongoDB |
-| `inventory-service` | 8083 | Stock levels; reserves stock on `order.created`; releases it on `order.cancelled` (compensation); idempotent per order id | in-memory ledger |
+| `inventory-service` | 8083 | Stock levels; reserves stock on `order.created`; releases it on `order.cancelled` (compensation); idempotent per order id | MongoDB (`inventory_db`) |
 | `cart-service` | 8084 | Per-user cart with a 7-day TTL | Redis |
-| `order-service` | 8085 | Prices orders from the catalogue, starts the saga, tracks status and step history | in-memory |
+| `order-service` | 8085 | Prices orders from the catalogue, starts the saga, tracks status and step history | MongoDB (`order_db`) |
 | `payment-service` | 8086 | Mock card charge with Resilience4j retry and circuit breaker; declines orders above ₹50,000 so the failure path can be shown | none |
-| `notification-service` | 8087 | Turns saga outcomes into per-user notifications | in-memory |
+| `notification-service` | 8087 | Turns saga outcomes into per-user notifications | MongoDB (`notification_db`) |
 | `report-job` | none | Batch job run as a Kubernetes CronJob (01:30 daily) that writes a daily sales report line | none |
 | `common-lib` | n/a | Shared event contracts, JWT helper, correlation-id filter, error handler | n/a |
 
-Seeded stock: every product starts at 25 units, except every fourth product, which starts at 3 so "Only N left" and "Sold out" are easy to demonstrate. Inventory, orders and notifications are kept in memory, so they reset when those pods restart.
+Seeded stock: every product starts at 25 units, except every fourth product, which starts at 3 so "Only N left" and "Sold out" are easy to demonstrate. Users (PostgreSQL), products, stock, orders and notifications (MongoDB) and carts (Redis, append-only file) are all stored on persistent volumes, so they survive pod restarts and an instance stop and start. Each service has its own database, and NetworkPolicies let only the owning services reach each datastore.
 
 ---
 
@@ -372,7 +372,7 @@ Invoke-Expression (terraform output -raw shell_command)   # open a shell on the 
 
 On macOS or Linux, use `$(terraform output -raw stop_command)` instead.
 
-After a start, the pods take a few minutes to become ready again. Inventory, orders and notifications reset because they are kept in memory.
+After a start, the pods take a few minutes to become ready again. Users, orders, stock, notifications and carts are kept on the instance's disk, so they are still there.
 
 ### Redeploy after a code change
 
@@ -391,7 +391,7 @@ From then on, every merge to `master` builds, scans and pushes the images, then 
 # full redeploy (pulls the latest manifests and restarts every deployment)
 aws ssm send-command --region ap-south-1 --instance-ids (terraform output -raw instance_id) --document-name AWS-RunShellScript --parameters "commands=/opt/shopsphere/deploy.sh"
 
-# or restart only the storefront (keeps in-memory stock and orders)
+# or restart only the storefront
 aws ssm send-command --region ap-south-1 --instance-ids (terraform output -raw instance_id) --document-name AWS-RunShellScript --parameters "commands=k3s kubectl -n shopsphere rollout restart deployment/frontend"
 ```
 
@@ -580,7 +580,7 @@ There are two overlays:
 | `terraform apply` says the instance type is not eligible | On the AWS Free plan, keep `instance_type = "c7i-flex.large"` (or another free-plan type with at least 4 GiB) |
 | Pods stuck in `ImagePullBackOff` on AWS | The GHCR packages are private; make each `shopsphere-*` package public |
 | Order stays `PENDING` | RabbitMQ or a saga service is not ready yet; check `docker compose ps` or `kubectl -n shopsphere get pods` |
-| Stock or orders reset | Expected after an inventory or order pod restart; those services keep data in memory |
+| Stock or orders reset | Data lives on the instance's disk and survives stop/start; only `terraform destroy` (or deleting the PVCs) removes it |
 | Compose services restart repeatedly | Docker Desktop needs about 3 GB of free memory |
 
 ---

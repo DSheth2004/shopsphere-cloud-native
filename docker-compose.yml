@@ -33,6 +33,8 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [ "redis-data:/data" ]
     healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 5s, retries: 10 }
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -84,8 +86,10 @@ services:
     <<: *java-service
     build: { context: ., args: { MODULE: services/inventory-service } }
     image: shopsphere/inventory-service:latest
-    environment: *rabbit-env
-    depends_on: { rabbitmq: { condition: service_healthy } }
+    environment:
+      <<: *rabbit-env
+      MONGODB_URI: mongodb://mongodb:27017/inventory_db
+    depends_on: { rabbitmq: { condition: service_healthy }, mongodb: { condition: service_healthy } }
   cart-service:
     <<: *java-service
     build: { context: ., args: { MODULE: services/cart-service } }
@@ -99,7 +103,8 @@ services:
     environment:
       <<: *rabbit-env
       PRODUCT_SERVICE_URL: http://product-service:8080
-    depends_on: { rabbitmq: { condition: service_healthy } }
+      MONGODB_URI: mongodb://mongodb:27017/order_db
+    depends_on: { rabbitmq: { condition: service_healthy }, mongodb: { condition: service_healthy } }
   payment-service:
     <<: *java-service
     build: { context: ., args: { MODULE: services/payment-service } }
@@ -112,8 +117,10 @@ services:
     <<: *java-service
     build: { context: ., args: { MODULE: services/notification-service } }
     image: shopsphere/notification-service:latest
-    environment: *rabbit-env
-    depends_on: { rabbitmq: { condition: service_healthy } }
+    environment:
+      <<: *rabbit-env
+      MONGODB_URI: mongodb://mongodb:27017/notification_db
+    depends_on: { rabbitmq: { condition: service_healthy }, mongodb: { condition: service_healthy } }
   report-job:
     build: { context: ., args: { MODULE: services/report-job } }
     image: shopsphere/report-job:latest
@@ -122,3 +129,4 @@ services:
 volumes:
   postgres-data:
   mongo-data:
+  redis-data:

@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 
 class InventoryControllerTest {
-    private final InventoryController controller = new InventoryController(new StockLedger());
+    private final InventoryController controller = new InventoryController(new StockLedger(InventoryStore.inMemory()));
 
     @Test
     void demoCatalogueIsStocked() {

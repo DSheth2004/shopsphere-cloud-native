@@ -5,9 +5,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-/** Immutable order snapshot; every saga transition appends to the history shown in the UI. */
-public record Order(UUID id, String userId, List<Line> items, BigDecimal total, Status status, String reason,
+/** Immutable order snapshot stored in MongoDB; every saga transition appends to the history shown in the UI. */
+@Document("orders")
+public record Order(@Id UUID id, String userId, List<Line> items, BigDecimal total, Status status, String reason,
                     Instant createdAt, List<Step> history) {
 
     public enum Status { PENDING, STOCK_RESERVED, CONFIRMED, CANCELLED;

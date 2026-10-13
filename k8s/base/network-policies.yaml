@@ -51,11 +51,15 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: { name: mongodb-from-product }
+metadata: { name: mongodb-from-owners }
 spec:
   podSelector: { matchLabels: { app: mongodb } }
   ingress:
-    - from: [{ podSelector: { matchLabels: { app: product-service } } }]
+    - from:
+        - podSelector: { matchLabels: { app: product-service } }
+        - podSelector: { matchLabels: { app: order-service } }
+        - podSelector: { matchLabels: { app: inventory-service } }
+        - podSelector: { matchLabels: { app: notification-service } }
       ports: [{ port: 27017 }]
 ---
 apiVersion: networking.k8s.io/v1
